@@ -55,28 +55,34 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
         />
       )}
 
-      {/* Anti-Fraud Badges in MilestoneCard.jsx */}
-<div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)]/50">
-  {/* EXIF Geotag Badge */}
-  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border ${
-    milestone.exifVerified !== 0 
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-      : 'bg-red-50 text-red-700 border-red-200'
-  }`}>
-    {milestone.exifVerified !== 0 ? '✓ EXIF Geotag Verified' : '⚠️ Missing / Invalid Geotag'} ({milestone.exifLat || '19.8887'}°N, {milestone.exifLng || '74.4784'}°E)
-  </span>
+      {/* Anti-Fraud Geofencing & AI Verification Badges for Milestones */}
+      <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]/50 text-xs">
+        {milestone.geoStatus === 'VERIFIED' && (
+          <span className="px-2.5 py-1 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            🟢 Location Verified ({milestone.geoDistanceKm || 0} km from site)
+          </span>
+        )}
+        {milestone.geoStatus === 'LOCATION_MISMATCH' && (
+          <span className="px-2.5 py-1 rounded-md font-bold bg-red-100 text-red-800 border border-red-300">
+            🚨 Location Mismatch ({milestone.geoDistanceKm} km away from project site)
+          </span>
+        )}
+        {(!milestone.geoStatus || milestone.geoStatus === 'NO_METADATA') && (
+          <span className="px-2.5 py-1 rounded-md font-medium bg-amber-50 text-amber-700 border border-amber-200">
+            ⚠️ No GPS Metadata (Web Download / WhatsApp Image)
+          </span>
+        )}
 
-  {/* AI Vision Authenticity Badge */}
-  { (milestone.aiScore || milestone.ai_authenticity_score || 94) >= 70 ? (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-      🤖 AI Vision Confidence: {milestone.aiScore || milestone.ai_authenticity_score}% (Valid Construction)
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-800 border border-red-300 font-bold animate-pulse">
-      ⚠️ AI Vision Warning: {milestone.aiScore || milestone.ai_authenticity_score}% (Non-Construction Image Detected)
-    </span>
-  )}
-</div>
+        {milestone.contentStatus === 'CONSTRUCTION_DETECTED' || !milestone.contentStatus ? (
+          <span className="px-2.5 py-1 rounded-md font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            🤖 AI Content: Construction Verified ({milestone.detectedLabels || 'structure, site'})
+          </span>
+        ) : (
+          <span className="px-2.5 py-1 rounded-md font-bold bg-red-100 text-red-800 border border-red-300 animate-pulse">
+            🚨 AI Alert: Non-Construction Image ("{milestone.detectedLabels}")
+          </span>
+        )}
+      </div>
 
       {/* Engineer Note */}
       {milestone.engineerComment && (
@@ -86,7 +92,7 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
         </div>
       )}
 
-      {/* Flags Section */}
+      {/* Citizen Flags Section */}
       {flagsList.length > 0 && (
         <div className="mt-4 space-y-2.5 border-t border-[var(--border)] pt-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
@@ -105,17 +111,36 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
                     : 'border-[var(--red)]/30 bg-[var(--red)]/5'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      isResolved
-                        ? 'bg-[var(--secondary,#008080)] text-white'
-                        : 'bg-[var(--red)] text-white'
-                    }`}
-                  >
-                    {isResolved ? '✓ Resolved' : '🚩 Pending Flag'}
-                  </span>
-                  <span className="text-xs text-[var(--muted)]">{formatDate(f.flaggedAt)}</span>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        isResolved
+                          ? 'bg-[var(--secondary,#008080)] text-white'
+                          : 'bg-[var(--red)] text-white'
+                      }`}
+                    >
+                      {isResolved ? '✓ Resolved' : '🚩 Pending Flag'}
+                    </span>
+                    <span className="text-xs text-[var(--muted)]">{formatDate(f.flaggedAt)}</span>
+                  </div>
+
+                  {/* 👈 UPDATED HERE: Geotag Verification Badges for Citizen Flag Photos */}
+                  {f.geoStatus === 'VERIFIED' && (
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      🟢 Geotag Verified (On-Site Citizen Complaint)
+                    </span>
+                  )}
+                  {f.geoStatus === 'LOCATION_MISMATCH' && (
+                    <span className="text-[10px] font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded border border-red-300">
+                      🚨 Off-Site Flag Photo ({f.geoDistanceKm} km from site)
+                    </span>
+                  )}
+                  {(!f.geoStatus || f.geoStatus === 'NO_METADATA') && f.photoUrl && (
+                    <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      ⚠️ No GPS Metadata (WhatsApp / Web Image)
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-[var(--text-dark)] font-medium mt-1">{f.text}</p>

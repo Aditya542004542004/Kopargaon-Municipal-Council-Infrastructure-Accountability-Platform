@@ -10,6 +10,7 @@ const WEIGHTS = {
 
 export function computeTrustIndex(milestones = []) {
   const total = milestones.length;
+  const autoFlaggedCount = milestones.filter((m) => m.auto_flagged || m.autoFlagged).length;
 
   if (total === 0) {
     return {
@@ -21,6 +22,10 @@ export function computeTrustIndex(milestones = []) {
         { label: 'Flag Resolution', value: 100, weight: WEIGHTS.flagResolution },
       ],
     };
+  }
+  if (autoFlaggedCount > 0) {
+  // Deduct 15 points per auto-flagged image discrepancy
+  score = Math.max(0, score - autoFlaggedCount * 15);
   }
 
   // 1. Verification Rate (35%)

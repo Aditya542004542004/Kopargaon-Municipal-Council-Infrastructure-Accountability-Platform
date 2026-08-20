@@ -121,4 +121,6 @@ export const api = {
   getDiscussionSummary: (projectId) => request(`/projects/${projectId}/discussion/summary`),
 
   fileUrl: (relativePath) => (relativePath ? `${API_BASE}${relativePath}` : null),
+  // Add inside api object in frontend/src/api/client.js:
+  createUser: (payload) => request('/users', { method: 'POST', body: payload })
 };

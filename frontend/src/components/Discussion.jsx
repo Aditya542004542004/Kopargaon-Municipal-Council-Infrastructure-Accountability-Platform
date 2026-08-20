@@ -1,128 +1,168 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 
-const CATEGORIES = ['general', 'technical', 'budget', 'suggestion'];
-const CATEGORY_LABEL = { general: 'General', technical: 'Technical', budget: 'Budget', suggestion: 'Suggestion' };
-const CATEGORY_COLOR = {
-  general: 'var(--muted)',
-  technical: 'var(--primary)',
-  budget: 'var(--amber, #B8791A)',
-  suggestion: 'var(--secondary)',
-};
-
-function formatDateTime(iso) {
-  return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-function SummaryPanel({ projectId }) {
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    api.getDiscussionSummary(projectId).then((s) => { setSummary(s); setLoading(false); }).catch(() => setLoading(false));
-  }, [projectId]);
-
-  if (loading) return null;
-  if (!summary || !summary.mostDiscussedConcern) return null;
-
-  return (
-    <div className="rounded-2xl bg-[var(--dark-bg)] p-5 text-white">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">AI Discussion Analysis</p>
-        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/60">
-          {summary.source === 'claude' ? 'Claude' : 'Rule-based'}
-        </span>
-      </div>
-      <p className="mt-2 text-sm font-semibold">{summary.mostDiscussedConcern}</p>
-      {summary.affectedCount > 0 && (
-        <p className="mt-1 text-xs text-white/60">{summary.affectedCount} flag{summary.affectedCount > 1 ? 's' : ''} raised</p>
-      )}
-      <p className="mt-3 text-sm text-[var(--accent)]">→ {summary.suggestedAction}</p>
-    </div>
-  );
+function formatDate(iso) {
+  if (!iso) return 'Recently';
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function Discussion({ projectId }) {
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('general');
-  const [posting, setPosting] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadData = useCallback(async () => {
+    try {
+      const postsData = await api.listDiscussion(projectId);
+      setPosts(postsData || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [projectId]);
+
+  const loadSummary = useCallback(async () => {
+    setLoadingSummary(true);
+    try {
+      const summaryData = await api.getDiscussionSummary(projectId);
+      setSummary(summaryData);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingSummary(false);
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    setLoading(true);
-    api.listDiscussion(projectId).then((d) => { setPosts(d); setLoading(false); }).catch(() => setLoading(false));
-  }, [projectId, refreshKey]);
+    loadData();
+    loadSummary();
+  }, [loadData, loadSummary]);
 
-  async function handlePost() {
+  async function handlePost(e) {
+    e.preventDefault();
     if (!content.trim()) return;
-    setPosting(true);
+    setSubmitting(true);
     try {
       await api.postDiscussion(projectId, { content: content.trim(), category });
       setContent('');
-      setRefreshKey((k) => k + 1);
+      await loadData();
+      await loadSummary(); // Re-evaluates AI summary with the new post
+    } catch (err) {
+      console.error(err);
     } finally {
-      setPosting(false);
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className="space-y-4">
-      <SummaryPanel projectId={projectId} key={refreshKey} />
-
-      <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className="rounded-full px-3 py-1 text-xs font-semibold"
-              style={{
-                backgroundColor: category === c ? CATEGORY_COLOR[c] : 'var(--card-bg)',
-                color: category === c ? 'white' : 'var(--muted)',
-              }}
+    <div className="space-y-6">
+      {/* AI Summary Banner */}
+      <div className="rounded-2xl border border-[var(--border)] bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-base font-semibold text-[var(--text-dark)] flex items-center gap-2">
+            <span>✨ Discussion Summary</span>
+          </h3>
+          {summary && !loadingSummary && (
+            <span
+              className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${
+                summary.source === 'gemini'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-gray-100 text-gray-600 border border-gray-200'
+              }`}
             >
-              {CATEGORY_LABEL[c]}
-            </button>
-          ))}
+              {summary.source === 'gemini' ? '✨ Gemini AI' : 'Rule-based'}
+            </span>
+          )}
         </div>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={2}
-          placeholder="Ask a question, raise a concern, or share an update…"
-          className="mt-3 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm focus:outline-none"
-        />
-        <button
-          disabled={posting || !content.trim()}
-          onClick={handlePost}
-          className="mt-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
-        >
-          {posting ? 'Posting…' : 'Post'}
-        </button>
+
+        {/* LOADING SKELETON (Prevents Flash of Rule-Based Summary!) */}
+        {loadingSummary ? (
+          <div className="space-y-2 py-3 animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="flex items-center gap-2 pt-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span className="text-xs text-gray-400 font-medium">
+                Analyzing citizen discussion with Gemini AI...
+              </span>
+            </div>
+          </div>
+        ) : summary?.mostDiscussedConcern ? (
+          <div className="space-y-2 text-sm text-[var(--text-dark)]">
+            <p>
+              <span className="font-semibold text-gray-700">Primary Concern: </span>
+              {summary.mostDiscussedConcern}
+            </p>
+            {summary.suggestedAction && (
+              <p className="text-xs text-[var(--secondary,#008080)] font-medium bg-[var(--card-bg)] p-2.5 rounded-lg border border-[var(--border)]">
+                💡 <span className="font-semibold">Suggested Action: </span>
+                {summary.suggestedAction}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-[var(--muted)]">
+            No discussion posts yet. Start the conversation below!
+          </p>
+        )}
       </div>
 
+      {/* New Post Form */}
+      <form onSubmit={handlePost} className="rounded-2xl border border-[var(--border)] bg-white p-5 space-y-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          Join the Discussion
+        </h4>
+        <div className="flex gap-2">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold focus:outline-none bg-gray-50"
+          >
+            <option value="general">General</option>
+            <option value="quality">Quality Concern</option>
+            <option value="delay">Schedule Delay</option>
+            <option value="safety">Safety Hazard</option>
+          </select>
+          <input
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Share feedback or ask a question about this project..."
+            className="flex-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm focus:outline-none"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={submitting || !content.trim()}
+          className="rounded-lg bg-[var(--primary,#008080)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+        >
+          {submitting ? 'Posting...' : 'Post Message'}
+        </button>
+      </form>
+
+      {/* Discussion Posts Feed */}
       <div className="space-y-3">
-        {loading && <p className="text-sm text-[var(--muted)]">Loading…</p>}
-        {!loading && posts.length === 0 && <p className="text-sm text-[var(--muted)]">No discussion yet — be the first to post.</p>}
-        {posts.map((p) => (
-          <div key={p.id} className="rounded-xl border border-[var(--border)] bg-white p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
-                style={{ backgroundColor: CATEGORY_COLOR[p.category] }}
-              >
-                {CATEGORY_LABEL[p.category]}
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          Discussion Feed ({posts.length})
+        </h4>
+        {posts.length === 0 ? (
+          <p className="text-xs text-[var(--muted)]">No discussion posts yet.</p>
+        ) : (
+          posts.map((p) => (
+            <div key={p.id} className="rounded-xl border border-[var(--border)] bg-white p-4 text-sm space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-[var(--text-dark)]">{p.author_name || p.user_name || 'Citizen'}</span>
+                <span className="text-[var(--muted)]">{formatDate(p.created_at)}</span>
+              </div>
+              <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-gray-100 text-gray-600">
+                {p.category}
               </span>
-              <span className="text-sm font-semibold text-[var(--text-dark)]">{p.author_name}</span>
-              <span className="text-xs capitalize text-[var(--muted)]">({p.author_role})</span>
-              <span className="text-xs text-[var(--muted)]">{formatDateTime(p.created_at)}</span>
+              <p className="text-gray-800 pt-1">{p.content}</p>
             </div>
-            <p className="mt-1.5 text-sm text-[var(--text-dark)]/85">{p.content}</p>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

@@ -23,30 +23,40 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // Authority provisions institutional accounts (Contractor/Engineer/Authority).
-// Citizens self-register via /auth/register instead — see that route's comment
-// for why the split exists.
+// Citizens self-register via /auth/register instead.
 router.post('/', requireAuth, requireRole('authority'), async (req, res) => {
   const { name, email, password, role, ward } = req.body;
   const validRoles = ['authority', 'contractor', 'engineer'];
+
   if (!name || !email || !password || !role) {
     return res.status(422).json({ error: 'name, email, password, and role are required' });
   }
+
   if (!validRoles.includes(role)) {
-    return res.status(422).json({ error: `role must be one of: ${validRoles.join(', ')} (citizens self-register via /auth/register)` });
+    return res.status(422).json({ 
+      error: `role must be one of: ${validRoles.join(', ')} (citizens self-register via /auth/register)` 
+    });
   }
 
-  const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName = name.trim();
+
+  const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [cleanEmail]);
   if (existing.length > 0) {
     return res.status(409).json({ error: 'An account with this email already exists' });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
   const id = uuid();
+
   await pool.query(
     'INSERT INTO users (id, name, email, password_hash, role, ward) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, name, email, passwordHash, role, ward || null]
+    [id, cleanName, cleanEmail, passwordHash, role, ward || null]
   );
-  res.status(201).json({ data: { id, name, email, role, ward } });
+
+  res.status(201).json({ 
+    data: { id, name: cleanName, email: cleanEmail, role, ward: ward || null } 
+  });
 });
 
 export default router;

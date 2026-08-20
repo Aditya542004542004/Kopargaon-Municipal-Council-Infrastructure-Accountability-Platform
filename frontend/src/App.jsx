@@ -12,6 +12,8 @@ import NewMilestoneForm from './components/NewMilestoneForm';
 import NewProjectForm from './components/NewProjectForm';
 import AuditTrail from './components/AuditTrail';
 import ExportPdfButton from './components/ExportPdfButton';
+import WhatsAppShareButton from './components/WhatsAppShareButton';
+import UserProvisioningModal from './components/UserProvisioningModal';
 
 function normalizeDetail(raw) {
   const { project, milestones, trustIndex, budget } = raw;
@@ -24,6 +26,7 @@ function normalizeDetail(raw) {
       budgetTotal: project.budget_total,
       budgetSpent: budget.totalSpent || project.budget_spent || 0,
       contractor: project.contractor_name,
+      contractorId: project.contractor_id,
       startDate: project.start_date,
       endDate: project.end_date,
     },
@@ -38,9 +41,11 @@ function normalizeDetail(raw) {
       status: m.status,
       engineerComment: m.engineer_comment,
       verifiedAt: m.verified_at,
-      exifLat: m.exif_lat,                  // 👈 ADD THIS
-      exifLng: m.exif_lng,                  // 👈 ADD THIS
-      aiScore: m.ai_authenticity_score,     
+      geoStatus: m.geo_status,
+      geoDistanceKm: m.geo_distance_km,
+      contentStatus: m.content_status,
+      detectedLabels: m.detected_labels,
+      autoFlagged: m.auto_flagged,
       flags: m.flags ? m.flags.map((f) => ({
         id: f.id,
         text: f.text,
@@ -48,7 +53,9 @@ function normalizeDetail(raw) {
         flaggedAt: f.flagged_at,
         status: f.status || 'pending',
         resolutionNote: f.resolution_note,
-        resolvedAt: f.resolved_at
+        resolvedAt: f.resolved_at,
+        geoStatus: f.geo_status,
+        geoDistanceKm: f.geo_distance_km
       })) : [],
     })),
     trustIndex,
@@ -69,6 +76,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [showNewProject, setShowNewProject] = useState(false);
+  const [showProvisionModal, setShowProvisionModal] = useState(false); // 👈 FIXED: Declared state here
   const [auditKey, setAuditKey] = useState(0);
   const [loadError, setLoadError] = useState('');
 
@@ -126,8 +134,8 @@ export default function App() {
     openProject(newProjectId);
   }
 
-  async function handleSubmitMilestone({ title, progressPercent, budgetSpent, note, photoFile }) {
-    await api.submitMilestone(selectedId, { title, progressPercent, budgetSpent, note, photoFile });
+  async function handleSubmitMilestone({ title, progressPercent, budgetSpent, note, photoFile, isFraudDemo }) {
+    await api.submitMilestone(selectedId, { title, progressPercent, budgetSpent, note, photoFile, isFraudDemo });
     await refresh();
   }
 
@@ -205,8 +213,9 @@ export default function App() {
         {view === 'dashboard' && <Dashboard projects={projects} onSelect={openProject} />}
         {view === 'demands' && <CommunityDemands role={user.role} />}
 
+        {/* Authority Action Bar */}
         {view === 'dashboard' && user.role === 'authority' && (
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             {!showNewProject ? (
               <button
                 onClick={() => setShowNewProject(true)}
@@ -217,6 +226,20 @@ export default function App() {
             ) : (
               <NewProjectForm onCreate={handleCreateProject} onClose={() => setShowNewProject(false)} />
             )}
+
+            <button
+              onClick={() => setShowProvisionModal(true)}
+              className="rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 px-4 py-2 text-sm font-semibold transition"
+            >
+              👤 Provision Official Accounts (Contractor / Engineer)
+            </button>
+          </div>
+        )}
+
+        {/* User Provisioning Modal */}
+        {showProvisionModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <UserProvisioningModal onClose={() => setShowProvisionModal(false)} />
           </div>
         )}
 
@@ -226,7 +249,16 @@ export default function App() {
               <button onClick={() => setView('dashboard')} className="text-sm text-[var(--muted)] hover:text-[var(--text-dark)]">
                 ← All projects
               </button>
-              <ExportPdfButton targetRef={printRef} projectName={detail.project.name} />
+
+              <div className="flex items-center gap-2">
+                <WhatsAppShareButton 
+                  project={detail.project} 
+                  trustIndexScore={detail.trustIndex.score}
+                  physicalPercent={detail.budget.physicalPercent}
+                  spentPercent={detail.budget.spentPercent}
+                />
+                <ExportPdfButton targetRef={printRef} projectName={detail.project.name} />
+              </div>
             </div>
 
             <div className="flex gap-1 border-b border-[var(--border)]">
@@ -270,7 +302,19 @@ export default function App() {
                         onResolveFlag={handleResolveFlag} 
                       />
                     ))}
-                    {user.role === 'contractor' && <NewMilestoneForm onSubmit={handleSubmitMilestone} />}
+                   {/* In src/App.jsx around line 228: Replace NewMilestoneForm render with this */}
+{user.role === 'contractor' && (
+  detail.project.contractorId === user.id || 
+  detail.project.contractor_id === user.id
+) ? (
+  <NewMilestoneForm onSubmit={handleSubmitMilestone} />
+) : (
+  user.role === 'contractor' && (
+    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900 flex items-center gap-2">
+      🔒 Milestone submission restricted: This project is assigned to "{detail.project.contractor}".
+    </div>
+  )
+)}
                   </div>
                 </div>
                 <AuditTrail projectId={selectedId} refreshKey={auditKey} />

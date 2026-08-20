@@ -24,7 +24,7 @@ function fileFilter(req, file, cb) {
 export const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB, matches the technical plan's validation rule
+  limits: { fileSize: 25 * 1024 * 1024 }, // 5MB, matches the technical plan's validation rule
 });
 
 export function photoUrlFor(file) {
