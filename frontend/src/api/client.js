@@ -68,13 +68,18 @@ export const api = {
   createProject: (payload) => request('/projects', { method: 'POST', body: payload }),
 
   // Updated to include budgetSpent
-  submitMilestone: (projectId, { title, progressPercent, budgetSpent, note, photoFile }) => {
+  submitMilestone: (projectId, { title, progressPercent, budgetSpent, note, photoFile, isFraudDemo }) => {
     const form = new FormData();
     form.append('title', title);
     form.append('progressPercent', progressPercent);
     if (budgetSpent !== undefined && budgetSpent !== null) form.append('budgetSpent', budgetSpent);
     if (note) form.append('note', note);
     if (photoFile) form.append('photo', photoFile);
+    // Demo-only escape hatch: lets a Contractor deliberately simulate a
+    // fraudulent upload so the fraud-detection UI can be shown live and
+    // reliably, instead of gambling on a real meme photo being classified
+    // correctly in the moment. Backend already supports this flag.
+    if (isFraudDemo) form.append('isFraudDemo', 'true');
     return requestMultipart(`/projects/${projectId}/milestones`, form);
   },
 
@@ -121,6 +126,4 @@ export const api = {
   getDiscussionSummary: (projectId) => request(`/projects/${projectId}/discussion/summary`),
 
   fileUrl: (relativePath) => (relativePath ? `${API_BASE}${relativePath}` : null),
-  // Add inside api object in frontend/src/api/client.js:
-  createUser: (payload) => request('/users', { method: 'POST', body: payload })
 };

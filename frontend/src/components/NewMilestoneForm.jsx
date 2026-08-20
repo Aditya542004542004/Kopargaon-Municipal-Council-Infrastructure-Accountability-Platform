@@ -7,6 +7,7 @@ export default function NewMilestoneForm({ projectId, onSubmit, onCreated, onClo
   const [budgetSpent, setBudgetSpent] = useState('');
   const [note, setNote] = useState('');
   const [file, setFile] = useState(null);
+  const [isFraudDemo, setIsFraudDemo] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,6 +23,7 @@ export default function NewMilestoneForm({ projectId, onSubmit, onCreated, onClo
         budgetSpent: Number(budgetSpent) || 0,
         note: note.trim(),
         photoFile: file,
+        isFraudDemo,
       };
 
       if (onSubmit) {
@@ -40,6 +42,7 @@ export default function NewMilestoneForm({ projectId, onSubmit, onCreated, onClo
       setBudgetSpent('');
       setNote('');
       setFile(null);
+      setIsFraudDemo(false);
       if (onClose) onClose();
     } catch (err) {
       setError(err.message || 'Failed to submit milestone update.');
@@ -107,6 +110,21 @@ export default function NewMilestoneForm({ projectId, onSubmit, onCreated, onClo
           onChange={(e) => setFile(e.target.files[0])}
           className="mt-1 block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--card-bg)] hover:file:bg-gray-200" 
         />
+      </div>
+
+      {/* Demo-only: simulate a fraudulent upload to reliably show the fraud-detection UI */}
+      <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+        <input
+          type="checkbox"
+          id="fraud-demo-toggle"
+          checked={isFraudDemo}
+          onChange={(e) => setIsFraudDemo(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-amber-600"
+        />
+        <label htmlFor="fraud-demo-toggle" className="text-xs text-amber-900">
+          <span className="font-semibold">🧪 Demo mode: simulate a fraudulent upload.</span>{' '}
+    
+        </label>
       </div>
 
       {/* Note */}

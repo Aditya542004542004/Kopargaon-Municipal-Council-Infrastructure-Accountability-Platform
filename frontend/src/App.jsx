@@ -302,19 +302,16 @@ export default function App() {
                         onResolveFlag={handleResolveFlag} 
                       />
                     ))}
-                   {/* In src/App.jsx around line 228: Replace NewMilestoneForm render with this */}
-{user.role === 'contractor' && (
-  detail.project.contractorId === user.id || 
-  detail.project.contractor_id === user.id
-) ? (
-  <NewMilestoneForm onSubmit={handleSubmitMilestone} />
-) : (
-  user.role === 'contractor' && (
-    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900 flex items-center gap-2">
-      🔒 Milestone submission restricted: This project is assigned to "{detail.project.contractor}".
-    </div>
-  )
-)}
+                    {user.role === 'contractor' && (
+                      String(detail.project.contractorId) === String(user.id) ? (
+                        <NewMilestoneForm onSubmit={handleSubmitMilestone} />
+                      ) : (
+                        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+                          🔒 Milestone submission restricted: this project is assigned to
+                          &nbsp;&quot;{detail.project.contractor}&quot;, not your account.
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
                 <AuditTrail projectId={selectedId} refreshKey={auditKey} />

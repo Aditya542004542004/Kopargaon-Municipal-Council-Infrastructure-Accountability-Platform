@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuid } from 'uuid';
 import { pool } from '../lib/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { writeAudit } from '../services/audit.js';
 
 const router = Router();
 
@@ -24,6 +25,10 @@ router.get('/', requireAuth, async (req, res) => {
 
 // Authority provisions institutional accounts (Contractor/Engineer/Authority).
 // Citizens self-register via /auth/register instead.
+//
+// This now writes to audit_log too (project_id = null, since account creation
+// isn't tied to a specific project) — "everything is auditable" should include
+// governance actions like who created which account, not just project events.
 router.post('/', requireAuth, requireRole('authority'), async (req, res) => {
   const { name, email, password, role, ward } = req.body;
   const validRoles = ['authority', 'contractor', 'engineer'];
@@ -33,8 +38,8 @@ router.post('/', requireAuth, requireRole('authority'), async (req, res) => {
   }
 
   if (!validRoles.includes(role)) {
-    return res.status(422).json({ 
-      error: `role must be one of: ${validRoles.join(', ')} (citizens self-register via /auth/register)` 
+    return res.status(422).json({
+      error: `role must be one of: ${validRoles.join(', ')} (citizens self-register via /auth/register)`,
     });
   }
 
@@ -49,13 +54,29 @@ router.post('/', requireAuth, requireRole('authority'), async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const id = uuid();
 
-  await pool.query(
-    'INSERT INTO users (id, name, email, password_hash, role, ward) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, cleanName, cleanEmail, passwordHash, role, ward || null]
-  );
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(
+      'INSERT INTO users (id, name, email, password_hash, role, ward) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, cleanName, cleanEmail, passwordHash, role, ward || null]
+    );
+    await writeAudit(connection, {
+      projectId: null,
+      eventType: 'account_provisioned',
+      actorId: req.user.id,
+      detail: { newUserId: id, name: cleanName, email: cleanEmail, role, ward: ward || null },
+    });
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 
-  res.status(201).json({ 
-    data: { id, name: cleanName, email: cleanEmail, role, ward: ward || null } 
+  res.status(201).json({
+    data: { id, name: cleanName, email: cleanEmail, role, ward: ward || null },
   });
 });
 
