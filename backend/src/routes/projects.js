@@ -57,13 +57,15 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ data: enriched });
 });
 
-// POST /projects — Create new project passport
+// POST /projects in backend/src/routes/projects.js
 router.post('/', requireAuth, requireRole('authority'), async (req, res) => {
-  const { name, ward, department, budgetTotal, contractorId, startDate, endDate, latitude, longitude } = req.body;
+  const { name, ward, department, category, budgetTotal, contractorId, startDate, endDate, latitude, longitude } = req.body;
+
   if (!name || !ward || !department || !budgetTotal || !contractorId || !startDate || !endDate) {
     return res.status(422).json({ error: 'name, ward, department, budgetTotal, contractorId, startDate, endDate are required' });
   }
 
+  const projCategory = category?.trim() || 'Road Works';
   const lat = latitude !== undefined && latitude !== null && latitude !== '' ? Number(latitude) : 19.8887;
   const lng = longitude !== undefined && longitude !== null && longitude !== '' ? Number(longitude) : 74.4784;
 
@@ -76,17 +78,21 @@ router.post('/', requireAuth, requireRole('authority'), async (req, res) => {
   try {
     await connection.beginTransaction();
     const id = uuid();
+
     await connection.query(
-      `INSERT INTO projects (id, name, ward, department, budget_total, budget_spent, contractor_id, authority_id, start_date, end_date, latitude, longitude)
-       VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
-      [id, name, ward, department, budgetTotal, contractorId, req.user.id, startDate, endDate, lat, lng]
+      `INSERT INTO projects 
+       (id, name, ward, department, category, budget_total, budget_spent, contractor_id, authority_id, start_date, end_date, latitude, longitude)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+      [id, name, ward, department, projCategory, budgetTotal, contractorId, req.user.id, startDate, endDate, lat, lng]
     );
+
     await writeAudit(connection, {
       projectId: id,
       eventType: 'project_created',
       actorId: req.user.id,
-      detail: { name, ward, budgetTotal, latitude: lat, longitude: lng },
+      detail: { name, ward, category: projCategory, budgetTotal, latitude: lat, longitude: lng },
     });
+
     await connection.commit();
     res.status(201).json({ data: { id } });
   } catch (err) {

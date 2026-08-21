@@ -23,6 +23,7 @@ function normalizeDetail(raw) {
       name: project.name,
       ward: project.ward,
       department: project.department,
+      category: project.category || 'Road Works', // 👈 ADD THIS
       budgetTotal: project.budget_total,
       budgetSpent: budget.totalSpent || project.budget_spent || 0,
       contractor: project.contractor_name,
@@ -76,7 +77,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [showNewProject, setShowNewProject] = useState(false);
-  const [showProvisionModal, setShowProvisionModal] = useState(false); // 👈 FIXED: Declared state here
+  const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [auditKey, setAuditKey] = useState(0);
   const [loadError, setLoadError] = useState('');
 
@@ -162,52 +163,59 @@ export default function App() {
   if (!user) return <Login onLoggedIn={setUser} />;
 
   return (
-    <div className="min-h-screen bg-[var(--light-bg)] pb-16">
-      <header className="border-b border-[var(--border)] bg-white">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--secondary)]">
-              Kopargaon Municipal Council
-            </p>
-            <h1 className="font-display text-xl font-semibold text-[var(--text-dark)]">
-              Infrastructure Accountability Platform
-            </h1>
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-16">
+      {/* FULL-WIDTH UNIFIED TOP HEADER */}
+      <header className="border-b border-slate-200 bg-white sticky top-0 z-30 shadow-xs">
+        <div className="w-full max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4 px-6 lg:px-10 py-3.5">
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-teal-700">
+                Kopargaon Municipal Council
+              </p>
+              <h1 className="font-display text-lg font-bold text-slate-900 leading-tight">
+                Infrastructure Accountability Platform
+              </h1>
+            </div>
+
+            {/* Main Nav Tabs */}
+            <nav className="hidden sm:flex items-center gap-1 border-l border-slate-200 pl-6 my-1">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setView(item.key)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
+                    view === item.key
+                      ? 'bg-teal-50 text-teal-700'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
+
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-semibold text-[var(--text-dark)]">{user.name}</p>
-              <p className="text-xs capitalize text-[var(--muted)]">{user.role}</p>
+              <p className="text-xs font-bold text-slate-900">{user.name}</p>
+              <p className="text-[10px] uppercase font-semibold text-teal-700">{user.role}</p>
             </div>
-            <button onClick={handleLogout} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--card-bg)]">
+            <button
+              onClick={handleLogout}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition shadow-xs"
+            >
               Log out
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-5xl gap-1 px-6">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setView(item.key)}
-              className={`border-b-2 px-3 py-2.5 text-sm font-semibold transition ${
-                view === item.key
-                  ? 'border-[var(--primary)] text-[var(--primary)]'
-                  : 'border-transparent text-[var(--muted)] hover:text-[var(--text-dark)]'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-          {view === 'project' && detail && (
-            <span className="border-b-2 border-[var(--primary)] px-3 py-2.5 text-sm font-semibold text-[var(--primary)]">
-              {detail.project.name}
-            </span>
-          )}
-        </nav>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      {/* FULL-WIDTH MAIN CONTENT AREA */}
+      <main className="w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-6">
         {loadError && (
-          <div className="mb-4 rounded-lg bg-[var(--red)]/10 px-4 py-3 text-sm text-[var(--red)]">{loadError}</div>
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs font-semibold text-red-700">
+            {loadError}
+          </div>
         )}
 
         {view === 'dashboard' && <Dashboard projects={projects} onSelect={openProject} />}
@@ -219,7 +227,7 @@ export default function App() {
             {!showNewProject ? (
               <button
                 onClick={() => setShowNewProject(true)}
-                className="rounded-lg bg-[var(--dark-bg)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                className="rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
               >
                 + New project passport
               </button>
@@ -229,7 +237,7 @@ export default function App() {
 
             <button
               onClick={() => setShowProvisionModal(true)}
-              className="rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 px-4 py-2 text-sm font-semibold transition"
+              className="rounded-xl border border-teal-700 text-teal-700 hover:bg-teal-50 px-4 py-2 text-xs font-bold transition shadow-xs"
             >
               👤 Provision Official Accounts (Contractor / Engineer)
             </button>
@@ -238,16 +246,17 @@ export default function App() {
 
         {/* User Provisioning Modal */}
         {showProvisionModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <UserProvisioningModal onClose={() => setShowProvisionModal(false)} />
           </div>
         )}
 
+        {/* Project Passport Detail View */}
         {view === 'project' && detail && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <button onClick={() => setView('dashboard')} className="text-sm text-[var(--muted)] hover:text-[var(--text-dark)]">
-                ← All projects
+              <button onClick={() => setView('dashboard')} className="text-xs font-bold text-slate-500 hover:text-slate-900">
+                ← Back to All Projects
               </button>
 
               <div className="flex items-center gap-2">
@@ -261,13 +270,15 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex gap-1 border-b border-[var(--border)]">
+            <div className="flex gap-2 border-b border-slate-200">
               {['overview', 'discussion'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setProjectTab(tab)}
-                  className={`px-3 pb-2 text-sm font-semibold capitalize ${
-                    projectTab === tab ? 'border-b-2 border-[var(--secondary)] text-[var(--text-dark)]' : 'text-[var(--muted)]'
+                  className={`px-4 pb-2.5 text-xs font-bold capitalize transition ${
+                    projectTab === tab
+                      ? 'border-b-2 border-teal-700 text-teal-700'
+                      : 'text-slate-400 hover:text-slate-700'
                   }`}
                 >
                   {tab === 'overview' ? 'Overview' : 'Discussion'}
@@ -275,48 +286,94 @@ export default function App() {
               ))}
             </div>
 
-            {projectTab === 'overview' && (
-              <div ref={printRef} className="space-y-6 p-4 bg-white rounded-2xl border border-[var(--border)] shadow-sm">
-                <PassportHeader project={detail.project} />
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <TrustIndexPanel score={detail.trustIndex.score} breakdown={detail.trustIndex.breakdown} />
-                  <BudgetProgress 
-                    project={detail.project} 
-                    spentPercent={detail.budget.spentPercent} 
-                    physicalPercent={detail.budget.physicalPercent} 
-                    spentAmount={detail.budget.totalSpent} 
-                  />
-                </div>
-                <div>
-                  <h2 className="font-display mb-3 text-lg font-semibold text-[var(--text-dark)]">Milestone Timeline</h2>
-                  <div className="space-y-4">
-                    {detail.milestones.length === 0 && <p className="text-sm text-[var(--muted)]">No milestones submitted yet.</p>}
-                    {detail.milestones.map((milestoneItem) => (
-                      <MilestoneCard 
-                        key={milestoneItem.id} 
-                        milestone={milestoneItem} 
-                        role={user.role} 
-                        onVerify={handleVerify} 
-                        onReject={handleReject} 
-                        onFlag={handleFlag} 
-                        onResolveFlag={handleResolveFlag} 
-                      />
-                    ))}
-                    {user.role === 'contractor' && (
-                      String(detail.project.contractorId) === String(user.id) ? (
-                        <NewMilestoneForm onSubmit={handleSubmitMilestone} />
-                      ) : (
-                        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
-                          🔒 Milestone submission restricted: this project is assigned to
-                          &nbsp;&quot;{detail.project.contractor}&quot;, not your account.
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-                <AuditTrail projectId={selectedId} refreshKey={auditKey} />
-              </div>
-            )}
+           {/* Inside src/App.jsx for overview tab */}
+{projectTab === 'overview' && (
+  <div ref={printRef} className="space-y-5">
+    {/* 1. UNIFIED 3-COLUMN TOP EXECUTIVE STRIP (Zero Vertical Wastage) */}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="lg:col-span-5">
+        <PassportHeader project={detail.project} />
+      </div>
+      <div className="lg:col-span-4">
+        <TrustIndexPanel score={detail.trustIndex.score} breakdown={detail.trustIndex.breakdown} />
+      </div>
+      <div className="lg:col-span-3">
+        <BudgetProgress 
+          project={detail.project} 
+          spentPercent={detail.budget.spentPercent} 
+          physicalPercent={detail.budget.physicalPercent} 
+          spentAmount={detail.budget.totalSpent} 
+        />
+      </div>
+    </div>
+
+    {/* 2. 2-COLUMN MILESTONES GRID (Fills Right-Side Empty Whitespace) */}
+    <div>
+      <h2 className="font-display mb-3 text-base font-bold text-slate-900 flex items-center justify-between">
+        <span>Milestone Timeline ({detail.milestones.length})</span>
+        <span className="text-xs text-slate-400 font-normal">Click any photo for Fullscreen Lightbox</span>
+      </h2>
+
+   {/* In src/App.jsx around line 200 */}
+
+<div>
+  <h2 className="font-display mb-3 text-base font-bold text-slate-900 flex items-center justify-between">
+    <span>Milestone Timeline ({detail.milestones.length})</span>
+    <span className="text-xs text-slate-400 font-normal">Click any photo for Fullscreen Lightbox</span>
+  </h2>
+
+  {/* 🧱 MASONRY COLUMN FLOW (Next card slides up into empty space!) */}
+  <div className="columns-1 lg:columns-2 gap-4 space-y-4">
+    {detail.milestones.length === 0 && (
+      <p className="text-xs text-slate-400 py-4 text-center bg-white rounded-xl border">
+        No milestones submitted yet.
+      </p>
+    )}
+    
+    {detail.milestones.map((milestoneItem) => (
+      <div key={milestoneItem.id} className="break-inside-avoid mb-4">
+        <MilestoneCard 
+          milestone={milestoneItem} 
+          role={user.role} 
+          onVerify={handleVerify} 
+          onReject={handleReject} 
+          onFlag={handleFlag} 
+          onResolveFlag={handleResolveFlag} 
+        />
+      </div>
+    ))}
+  </div>
+
+  {/* Contractor Milestone Form */}
+  {user.role === 'contractor' && (
+    <div className="mt-4">
+      {(detail.project.contractorId === user.id || detail.project.contractor_id === user.id) ? (
+        <NewMilestoneForm onSubmit={handleSubmitMilestone} />
+      ) : (
+        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900">
+          🔒 Milestone submission restricted: Assigned to "{detail.project.contractor}".
+        </div>
+      )}
+    </div>
+  )}
+</div>
+
+      {user.role === 'contractor' && (
+        <div className="mt-4">
+          {(detail.project.contractorId === user.id || detail.project.contractor_id === user.id) ? (
+            <NewMilestoneForm onSubmit={handleSubmitMilestone} />
+          ) : (
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900">
+              🔒 Milestone submission restricted: Assigned to "{detail.project.contractor}".
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    <AuditTrail projectId={selectedId} refreshKey={auditKey} />
+  </div>
+)}
 
             {projectTab === 'discussion' && <Discussion projectId={selectedId} />}
           </div>

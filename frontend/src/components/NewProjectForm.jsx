@@ -2,10 +2,20 @@ import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import LocationPickerMap from './LocationPickerMap';
 
+const CATEGORIES = [
+  'Road Works',
+  'Water Supply',
+  'Drainage & Sewage',
+  'Electricity & Lighting',
+  'Sanitation & Waste',
+  'Buildings & Welfare'
+];
+
 export default function NewProjectForm({ onCreate, onClose }) {
   const [name, setName] = useState('');
   const [ward, setWard] = useState('');
   const [department, setDepartment] = useState('');
+  const [category, setCategory] = useState('Road Works'); // 👈 NEW CATEGORY STATE
   const [budget, setBudget] = useState('');
   const [contractorId, setContractorId] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -30,6 +40,7 @@ export default function NewProjectForm({ onCreate, onClose }) {
         name: name.trim(),
         ward: ward.trim(),
         department: department.trim(),
+        category, // 👈 PASS CATEGORY
         budgetTotal: Number(budget),
         contractorId,
         startDate,
@@ -59,6 +70,18 @@ export default function NewProjectForm({ onCreate, onClose }) {
           <input value={ward} onChange={(e) => setWard(e.target.value)} placeholder="e.g. Ward 3"
             className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm focus:outline-none" />
         </div>
+
+        {/* NEW CATEGORY DROPDOWN */}
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Project Category</label>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm focus:outline-none bg-gray-50 font-medium">
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Department</label>
           <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. Municipal Roads Department"
@@ -78,11 +101,8 @@ export default function NewProjectForm({ onCreate, onClose }) {
               <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
             ))}
           </select>
-          {contractors.length === 0 && (
-            <p className="mt-1 text-xs text-[var(--muted)]">No contractor accounts exist yet — register one first.</p>
-          )}
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:col-span-2">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Start date</label>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}

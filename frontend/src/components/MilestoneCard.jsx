@@ -12,7 +12,9 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
   const [flagText, setFlagText] = useState('');
   const [flagPhoto, setFlagPhoto] = useState(null);
   const [showFlagForm, setShowFlagForm] = useState(false);
+  const [showAllFlags, setShowAllFlags] = useState(false); // 👈 COLLAPSIBLE FLAGS TOGGLE
   const [submitting, setSubmitting] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState(null);
 
   const flagsList = milestone.flags || [];
   const canReview = role === 'engineer' && milestone.status === 'submitted';
@@ -20,184 +22,188 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
   const canResolveFlags = (role === 'engineer' || role === 'authority') && Boolean(onResolveFlag);
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="font-display text-lg font-semibold text-[var(--text-dark)]">{milestone.title}</h3>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">Submitted {formatDate(milestone.submittedAt)}</p>
-        </div>
-        <StatusChain 
-          status={milestone.status} 
-          flagCount={flagsList.filter((f) => !f.status || f.status === 'pending').length} 
-        />
-      </div>
-
-      {/* Progress Bar */}
-      <div className="mt-3 flex items-center gap-3">
-        <div className="h-2 flex-1 rounded-full bg-[var(--card-bg)]">
-          <div
-            className="h-2 rounded-full bg-[var(--primary)]"
-            style={{ width: `${milestone.progressPercent || 0}%` }}
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3.5 flex flex-col justify-between">
+      <div className="space-y-3">
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <div>
+            <h3 className="font-display text-base font-bold text-slate-900 leading-tight">{milestone.title}</h3>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">Submitted {formatDate(milestone.submittedAt)}</p>
+          </div>
+          <StatusChain 
+            status={milestone.status} 
+            flagCount={flagsList.filter((f) => !f.status || f.status === 'pending').length} 
           />
         </div>
-        <span className="text-sm font-semibold text-[var(--text-dark)]">{milestone.progressPercent || 0}%</span>
-      </div>
 
-      {milestone.note && <p className="mt-3 text-sm text-[var(--text-dark)]/80">{milestone.note}</p>}
-
-      {/* Evidence Photo */}
-      {milestone.photoUrl && (
-        <img
-          src={api.fileUrl(milestone.photoUrl)}
-          alt="Milestone evidence"
-          className="mt-3 h-40 w-full rounded-lg object-cover"
-        />
-      )}
-
-      {/* Anti-Fraud Geofencing & AI Verification Badges for Milestones */}
-      <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]/50 text-xs">
-        {milestone.geoStatus === 'VERIFIED' && (
-          <span className="px-2.5 py-1 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            🟢 Location Verified ({milestone.geoDistanceKm || 0} km from site)
-          </span>
-        )}
-        {milestone.geoStatus === 'LOCATION_MISMATCH' && (
-          <span className="px-2.5 py-1 rounded-md font-bold bg-red-100 text-red-800 border border-red-300">
-            🚨 Location Mismatch ({milestone.geoDistanceKm} km away from project site)
-          </span>
-        )}
-        {(!milestone.geoStatus || milestone.geoStatus === 'NO_METADATA') && (
-          <span className="px-2.5 py-1 rounded-md font-medium bg-amber-50 text-amber-700 border border-amber-200">
-            ⚠️ No GPS Metadata (Web Download / WhatsApp Image)
-          </span>
-        )}
-
-        {milestone.contentStatus === 'CONSTRUCTION_DETECTED' || !milestone.contentStatus ? (
-          <span className="px-2.5 py-1 rounded-md font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            🤖 AI Content: Construction Verified ({milestone.detectedLabels || 'structure, site'})
-          </span>
-        ) : (
-          <span className="px-2.5 py-1 rounded-md font-bold bg-red-100 text-red-800 border border-red-300 animate-pulse">
-            🚨 AI Alert: Non-Construction Image ("{milestone.detectedLabels}")
-          </span>
-        )}
-      </div>
-
-      {/* Engineer Note */}
-      {milestone.engineerComment && (
-        <div className="mt-3 rounded-lg bg-[var(--card-bg)] px-3 py-2 text-sm text-[var(--text-dark)]">
-          <span className="font-semibold">Engineer note: </span>
-          {milestone.engineerComment}
+        {/* Progress Bar */}
+        <div>
+          <div className="flex justify-between items-center text-[11px] font-semibold text-slate-600 mb-1">
+            <span>Milestone Physical Progress</span>
+            <span className="font-bold text-slate-900">{milestone.progressPercent || 0}%</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-teal-600 transition-all duration-500"
+              style={{ width: `${milestone.progressPercent || 0}%` }}
+            />
+          </div>
         </div>
-      )}
 
-      {/* Citizen Flags Section */}
-      {flagsList.length > 0 && (
-        <div className="mt-4 space-y-2.5 border-t border-[var(--border)] pt-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Ground Reality Flags ({flagsList.length})
-          </h4>
+        {milestone.note && (
+          <p className="text-xs text-slate-700 leading-relaxed font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            {milestone.note}
+          </p>
+        )}
 
-          {flagsList.map((f) => {
-            const isResolved = f.status === 'resolved' || f.status === 'dismissed';
+        {/* 🖼️ CLICKABLE EVIDENCE PHOTO (Fullscreen Lightbox) */}
+        {milestone.photoUrl && (
+          <div
+            onClick={() => setLightboxImg(api.fileUrl(milestone.photoUrl))}
+            className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-slate-900/5 max-h-48"
+          >
+            <img
+              src={api.fileUrl(milestone.photoUrl)}
+              alt="Milestone evidence"
+              className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
+              <span>🔍 Click for Fullscreen</span>
+            </div>
+          </div>
+        )}
 
-            return (
-              <div
-                key={f.id}
-                className={`rounded-xl border p-3 text-sm transition-colors ${
-                  isResolved
-                    ? 'border-[var(--secondary,#008080)]/30 bg-[var(--card-bg)]'
-                    : 'border-[var(--red)]/30 bg-[var(--red)]/5'
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        isResolved
-                          ? 'bg-[var(--secondary,#008080)] text-white'
-                          : 'bg-[var(--red)] text-white'
-                      }`}
-                    >
-                      {isResolved ? '✓ Resolved' : '🚩 Pending Flag'}
-                    </span>
-                    <span className="text-xs text-[var(--muted)]">{formatDate(f.flaggedAt)}</span>
-                  </div>
+        {/* Anti-Fraud Badges */}
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          {milestone.geoStatus === 'VERIFIED' && (
+            <span className="px-2 py-0.5 rounded font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              🟢 Location Verified ({milestone.geoDistanceKm || 0} km)
+            </span>
+          )}
+          {milestone.geoStatus === 'LOCATION_MISMATCH' && (
+            <span className="px-2 py-0.5 rounded font-bold bg-red-100 text-red-800 border border-red-300">
+              🚨 Location Mismatch ({milestone.geoDistanceKm} km)
+            </span>
+          )}
+          {(!milestone.geoStatus || milestone.geoStatus === 'NO_METADATA') && (
+            <span className="px-2 py-0.5 rounded font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              ⚠️ No GPS Metadata
+            </span>
+          )}
 
-                  {/* 👈 UPDATED HERE: Geotag Verification Badges for Citizen Flag Photos */}
-                  {f.geoStatus === 'VERIFIED' && (
-                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      🟢 Geotag Verified (On-Site Citizen Complaint)
-                    </span>
-                  )}
-                  {f.geoStatus === 'LOCATION_MISMATCH' && (
-                    <span className="text-[10px] font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded border border-red-300">
-                      🚨 Off-Site Flag Photo ({f.geoDistanceKm} km from site)
-                    </span>
-                  )}
-                  {(!f.geoStatus || f.geoStatus === 'NO_METADATA') && f.photoUrl && (
-                    <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      ⚠️ No GPS Metadata (WhatsApp / Web Image)
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-[var(--text-dark)] font-medium mt-1">{f.text}</p>
-
-                {f.photoUrl && (
-                  <img
-                    src={api.fileUrl(f.photoUrl)}
-                    alt="Flag evidence"
-                    className="mt-2 h-32 w-full rounded-lg object-cover"
-                  />
-                )}
-
-                {isResolved && f.resolutionNote && (
-                  <div className="mt-2 text-xs font-medium text-[var(--secondary,#008080)] italic bg-white/80 p-2 rounded border border-[var(--border)]">
-                    Resolution note: "{f.resolutionNote}"
-                  </div>
-                )}
-
-                {!isResolved && canResolveFlags && (
-                  <div className="mt-3 flex items-center justify-between border-t border-[var(--red)]/20 pt-2">
-                    <span className="text-xs font-semibold text-[var(--red)]">Requires On-Site Resolution</span>
-                    <button
-                      disabled={submitting}
-                      onClick={async () => {
-                        const resolutionComment = prompt('Enter resolution note (e.g. "Inspected site and verified issue resolved"):');
-                        if (resolutionComment !== null) {
-                          setSubmitting(true);
-                          await onResolveFlag(f.id, 'resolve', resolutionComment);
-                          setSubmitting(false);
-                        }
-                      }}
-                      className="rounded-lg bg-[var(--secondary,#008080)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 transition"
-                    >
-                      ✓ Mark Resolved
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {milestone.contentStatus === 'CONSTRUCTION_DETECTED' || !milestone.contentStatus ? (
+            <span className="px-2 py-0.5 rounded font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              🤖 AI Verified ({milestone.detectedLabels || 'structure'})
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded font-bold bg-red-100 text-red-800 border border-red-300 animate-pulse">
+              🚨 AI Alert: Non-Construction Image
+            </span>
+          )}
         </div>
-      )}
+
+        {/* Engineer Note */}
+        {milestone.engineerComment && (
+          <div className="rounded-xl bg-slate-50 p-2.5 text-xs text-slate-800 border border-slate-100">
+            <span className="font-bold text-slate-900">Engineer note: </span>
+            {milestone.engineerComment}
+          </div>
+        )}
+
+        {/* 🚩 SPACE-EFFICIENT FLAGS LIST (Collapsible / Scrollable) */}
+        {flagsList.length > 0 && (
+          <div className="space-y-2 border-t border-slate-100 pt-2.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Ground Reality Flags ({flagsList.length})
+              </h4>
+              {flagsList.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllFlags(!showAllFlags)}
+                  className="text-[10px] font-bold text-teal-700 hover:underline"
+                >
+                  {showAllFlags ? 'Collapse ▲' : `View All (${flagsList.length}) ▼`}
+                </button>
+              )}
+            </div>
+
+            <div className={`space-y-2.5 ${flagsList.length > 2 && !showAllFlags ? 'max-h-56 overflow-y-auto pr-1' : ''}`}>
+              {flagsList.map((f) => {
+                const isResolved = f.status === 'resolved' || f.status === 'dismissed';
+
+                return (
+                  <div
+                    key={f.id}
+                    className={`rounded-xl border p-2.5 text-xs space-y-1.5 ${
+                      isResolved
+                        ? 'border-emerald-200 bg-emerald-50/50'
+                        : 'border-red-200 bg-red-50/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                          isResolved ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                        }`}
+                      >
+                        {isResolved ? '✓ Resolved' : '🚩 Pending Flag'}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{formatDate(f.flaggedAt)}</span>
+                    </div>
+
+                    <p className="text-slate-800 font-medium">{f.text}</p>
+
+                    {f.photoUrl && (
+                      <img
+                        src={api.fileUrl(f.photoUrl)}
+                        onClick={() => setLightboxImg(api.fileUrl(f.photoUrl))}
+                        alt="Flag evidence"
+                        className="h-24 w-full object-cover rounded-lg cursor-pointer hover:opacity-90"
+                      />
+                    )}
+
+                    {!isResolved && canResolveFlags && (
+                      <div className="flex items-center justify-between border-t border-red-200/60 pt-1.5 mt-1">
+                        <span className="text-[10px] font-semibold text-red-700">Requires Fix</span>
+                        <button
+                          disabled={submitting}
+                          onClick={async () => {
+                            const comment = prompt('Enter resolution note:');
+                            if (comment !== null) {
+                              setSubmitting(true);
+                              await onResolveFlag(f.id, 'resolve', comment);
+                              setSubmitting(false);
+                            }
+                          }}
+                          className="rounded-lg bg-teal-700 px-2.5 py-1 text-[10px] font-bold text-white"
+                        >
+                          ✓ Mark Resolved
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Engineer Review Section */}
       {canReview && (
-        <div className="mt-4 border-t border-[var(--border)] pt-4">
-          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Engineer Review & Verification
+        <div className="border-t border-slate-100 pt-3 space-y-2">
+          <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+            Engineer Review
           </label>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="e.g. Site inspected, quality matches spec. Proceed to next phase."
+            placeholder="e.g. Quality matches spec."
             rows={2}
-            className="mt-2 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm focus:outline-none"
+            className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none bg-slate-50/50"
           />
-          <div className="mt-2 flex gap-2">
+          <div className="flex gap-2">
             <button
               disabled={submitting}
               onClick={async () => {
@@ -205,7 +211,7 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
                 await onVerify(milestone.id, comment);
                 setSubmitting(false);
               }}
-              className="rounded-lg bg-[var(--secondary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-teal-700 py-1.5 text-xs font-bold text-white"
             >
               Verify milestone
             </button>
@@ -216,7 +222,7 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
                 await onReject(milestone.id, comment);
                 setSubmitting(false);
               }}
-              className="rounded-lg border border-[var(--red)]/40 px-4 py-2 text-sm font-semibold text-[var(--red)] hover:bg-[var(--red)]/5 disabled:opacity-50"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700"
             >
               Reject
             </button>
@@ -226,36 +232,30 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
 
       {/* Citizen Flag Form */}
       {canFlag && (
-        <div className="mt-4 border-t border-[var(--border)] pt-4">
+        <div className="border-t border-slate-100 pt-3">
           {!showFlagForm ? (
             <button
               onClick={() => setShowFlagForm(true)}
-              className="rounded-lg border border-[var(--red)]/40 px-4 py-2 text-sm font-semibold text-[var(--red)] hover:bg-[var(--red)]/5"
+              className="w-full rounded-lg border border-red-200 bg-red-50 py-1.5 text-xs font-bold text-red-700"
             >
               Flag a discrepancy
             </button>
           ) : (
-            <>
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                What doesn't match on the ground?
-              </label>
+            <div className="space-y-2 bg-red-50/50 p-2.5 rounded-xl border border-red-200 text-xs">
               <textarea
                 value={flagText}
                 onChange={(e) => setFlagText(e.target.value)}
-                placeholder="e.g. Road section near the school still looks incomplete."
+                placeholder="What doesn't match on the ground?"
                 rows={2}
-                className="mt-2 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm focus:outline-none"
+                className="w-full rounded-lg border border-red-200 px-2.5 py-1.5 text-xs focus:outline-none bg-white"
               />
-              <label className="mt-2 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                Photo evidence (optional)
-              </label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => setFlagPhoto(e.target.files[0] || null)}
-                className="mt-1 w-full text-sm text-[var(--muted)]"
+                className="text-[10px] text-slate-500"
               />
-              <div className="mt-2 flex gap-2">
+              <div className="flex gap-2">
                 <button
                   disabled={submitting}
                   onClick={async () => {
@@ -267,19 +267,41 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
                     setShowFlagForm(false);
                     setSubmitting(false);
                   }}
-                  className="rounded-lg bg-[var(--red)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-bold text-white"
                 >
                   Submit flag
                 </button>
                 <button
                   onClick={() => setShowFlagForm(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--card-bg)]"
+                  className="px-3 py-1.5 text-xs font-bold text-slate-500"
                 >
                   Cancel
                 </button>
               </div>
-            </>
+            </div>
           )}
+        </div>
+      )}
+
+      {/* FULLSCREEN LIGHTBOX MODAL */}
+      {lightboxImg && (
+        <div
+          onClick={() => setLightboxImg(null)}
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out"
+        >
+          <div className="relative max-w-5xl max-h-[90vh]">
+            <img
+              src={lightboxImg}
+              alt="Fullscreen evidence"
+              className="max-h-[85vh] max-w-full rounded-2xl shadow-2xl object-contain mx-auto"
+            />
+            <button
+              onClick={() => setLightboxImg(null)}
+              className="absolute -top-10 right-0 text-white font-bold text-xs bg-white/20 hover:bg-white/40 px-3 py-1 rounded-full transition"
+            >
+              ✕ Close Fullscreen
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -1,33 +1,45 @@
-export default function TrustIndexPanel({ score, breakdown }) {
+import React from 'react';
+
+function getTrustScoreColor(score) {
+  if (score >= 80) return '#059669';
+  if (score >= 60) return '#d97706';
+  return '#dc2626';
+}
+
+export default function TrustIndexPanel({ score = 100, breakdown = [] }) {
   return (
-    <div className="rounded-2xl bg-[var(--dark-bg)] p-6 text-white">
-      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">
-        Governance Trust Index
-      </p>
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="font-display text-6xl font-bold text-[var(--accent)]">{score}</span>
-        <span className="text-lg text-white/50">/ 100</span>
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs h-full flex flex-col justify-between space-y-2.5">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-teal-800">
+          Governance Trust Index
+        </h3>
+        <span className="text-[9px] font-bold text-slate-400">Live Score</span>
       </div>
-      <div className="mt-5 space-y-3">
-        {breakdown.map((b) => (
-          <div key={b.label}>
-            <div className="flex items-center justify-between text-xs text-white/70">
-              <span>{b.label}</span>
-              <span className="font-semibold text-white">{b.value}</span>
+
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-3xl font-black leading-none" style={{ color: getTrustScoreColor(score) }}>
+          {score}
+        </span>
+        <span className="text-xs font-bold text-slate-400">/ 100 Score</span>
+      </div>
+
+      {/* Breakdown Bars */}
+      <div className="space-y-1.5">
+        {breakdown.map((item, idx) => (
+          <div key={idx}>
+            <div className="flex justify-between text-[10px] font-medium text-slate-600 mb-0.5">
+              <span>{item.label}</span>
+              <span className="font-bold text-slate-800">{item.value}%</span>
             </div>
-            <div className="mt-1 h-1.5 w-full rounded-full bg-white/15">
+            <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
               <div
-                className="h-1.5 rounded-full bg-[var(--secondary)]"
-                style={{ width: `${b.value}%` }}
+                className="h-full rounded-full bg-teal-600 transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.max(0, item.value))}%` }}
               />
             </div>
           </div>
         ))}
       </div>
-      <p className="mt-5 text-[11px] leading-relaxed text-white/50">
-        Computed from verification rate, documentation completeness, update frequency, and
-        unresolved flags. Weights are fixed constants, visible in code — not a black box.
-      </p>
     </div>
   );
 }
