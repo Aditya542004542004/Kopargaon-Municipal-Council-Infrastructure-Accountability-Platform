@@ -121,6 +121,7 @@ export async function verifyUploadedImage(filePath, projectLat, projectLng, cont
     isAutoFlagged
   };
 }
+// Replace verifyCitizenFlagImage in backend/src/services/imageVerification.js with this:
 
 export async function verifyCitizenFlagImage(filePath, projectLat, projectLng) {
   let geoStatus = 'NO_METADATA';
@@ -136,13 +137,25 @@ export async function verifyCitizenFlagImage(filePath, projectLat, projectLng) {
     if (result.tags && result.tags.GPSLatitude && result.tags.GPSLongitude) {
       photoLat = Number(result.tags.GPSLatitude.toFixed(6));
       photoLng = Number(result.tags.GPSLongitude.toFixed(6));
+      
+      // Calculate distance in kilometers
       geoDistanceKm = calculateDistanceKm(photoLat, photoLng, projectLat, projectLng);
 
-      geoStatus = geoDistanceKm <= 1.5 ? 'VERIFIED' : 'LOCATION_MISMATCH';
+      // STRICT 100-METER GEOFENCE THRESHOLD (0.1 km)
+      if (geoDistanceKm <= 0.1) {
+        geoStatus = 'VERIFIED';
+      } else {
+        geoStatus = 'LOCATION_MISMATCH';
+      }
     }
   } catch (err) {
     geoStatus = 'NO_METADATA';
   }
 
-  return { geoStatus, geoDistanceKm, photoLat, photoLng };
+  return { 
+    geoStatus, 
+    geoDistanceKm, 
+    photoLat, 
+    photoLng 
+  };
 }

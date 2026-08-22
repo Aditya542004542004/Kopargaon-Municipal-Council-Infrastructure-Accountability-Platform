@@ -129,62 +129,102 @@ export default function MilestoneCard({ milestone = {}, role, onVerify, onReject
             </div>
 
             <div className={`space-y-2.5 ${flagsList.length > 2 && !showAllFlags ? 'max-h-56 overflow-y-auto pr-1' : ''}`}>
-              {flagsList.map((f) => {
-                const isResolved = f.status === 'resolved' || f.status === 'dismissed';
+             {flagsList.map((f) => {
+  const isResolved = f.status === 'resolved' || f.status === 'dismissed';
+  const flagImage = f.photoUrl || f.photo_url; // Captures both camelCase and snake_case
 
-                return (
-                  <div
-                    key={f.id}
-                    className={`rounded-xl border p-2.5 text-xs space-y-1.5 ${
-                      isResolved
-                        ? 'border-emerald-200 bg-emerald-50/50'
-                        : 'border-red-200 bg-red-50/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                          isResolved ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
-                        }`}
-                      >
-                        {isResolved ? '✓ Resolved' : '🚩 Pending Flag'}
-                      </span>
-                      <span className="text-[10px] text-slate-400">{formatDate(f.flaggedAt)}</span>
-                    </div>
+  return (
+    <div
+      key={f.id}
+      className={`rounded-xl border p-2.5 text-xs space-y-1.5 ${
+        isResolved
+          ? 'border-emerald-200 bg-emerald-50/50'
+          : 'border-red-200 bg-red-50/50'
+      }`}
+    >
+      {/* 1. TOP ROW: Status Badge + Geotag Badges */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2">
+          <span
+            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+              isResolved ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+            }`}
+          >
+            {isResolved ? '✓ Resolved' : '🚩 Pending Flag'}
+          </span>
+          <span className="text-xs text-[var(--muted)]">{formatDate(f.flaggedAt)}</span>
+        </div>
 
-                    <p className="text-slate-800 font-medium">{f.text}</p>
+        {/* Strict 100-Meter Geofence Badges for Citizens */}
+        {f.geoStatus === 'VERIFIED' && (
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            🟢 On-Site Geotag ({f.geoDistanceKm ? Math.round(f.geoDistanceKm * 1000) + 'm' : '<100m'} from site)
+          </span>
+        )}
 
-                    {f.photoUrl && (
-                      <img
-                        src={api.fileUrl(f.photoUrl)}
-                        onClick={() => setLightboxImg(api.fileUrl(f.photoUrl))}
-                        alt="Flag evidence"
-                        className="h-24 w-full object-cover rounded-lg cursor-pointer hover:opacity-90"
-                      />
-                    )}
+        {f.geoStatus === 'LOCATION_MISMATCH' && (
+          <span className="text-[10px] font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded border border-red-300">
+            🚨 Off-Site Flag ({f.geoDistanceKm >= 1 ? f.geoDistanceKm + ' km' : Math.round(f.geoDistanceKm * 1000) + 'm'} away — Exceeds 100m Limit)
+          </span>
+        )}
 
-                    {!isResolved && canResolveFlags && (
-                      <div className="flex items-center justify-between border-t border-red-200/60 pt-1.5 mt-1">
-                        <span className="text-[10px] font-semibold text-red-700">Requires Fix</span>
-                        <button
-                          disabled={submitting}
-                          onClick={async () => {
-                            const comment = prompt('Enter resolution note:');
-                            if (comment !== null) {
-                              setSubmitting(true);
-                              await onResolveFlag(f.id, 'resolve', comment);
-                              setSubmitting(false);
-                            }
-                          }}
-                          className="rounded-lg bg-teal-700 px-2.5 py-1 text-[10px] font-bold text-white"
-                        >
-                          ✓ Mark Resolved
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+        {(!f.geoStatus || f.geoStatus === 'NO_METADATA') && flagImage && (
+          <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+            ⚠️ No GPS Metadata (Camera capture within 100m required)
+          </span>
+        )}
+      </div>
+
+      {/* 2. FLAG TEXT DESCRIPTION */}
+      <p className="text-slate-800 font-medium pt-0.5">{f.text}</p>
+
+      {/* 3. 🖼️ FLAG EVIDENCE PHOTO WITH FULLSCREEN LIGHTBOX (PASTE HERE) */}
+      {flagImage && (
+        <div
+          onClick={() => setLightboxImg(api.fileUrl(flagImage))}
+          className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-900/5 cursor-pointer group relative max-h-48"
+        >
+          <img
+            src={api.fileUrl(flagImage)}
+            alt="Flag evidence"
+            className="max-h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105 rounded-lg"
+          />
+          <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+            🔍 Click for Fullscreen View
+          </div>
+        </div>
+      )}
+
+      {/* 4. RESOLUTION NOTE (If Flag is Resolved) */}
+      {isResolved && f.resolutionNote && (
+        <div className="mt-2 text-[11px] font-medium text-emerald-800 italic bg-white p-2 rounded-lg border border-emerald-200">
+          Resolution note: "{f.resolutionNote}"
+        </div>
+      )}
+
+      {/* 5. ACTION ROW: Engineer/Authority Mark Resolved Button */}
+      {!isResolved && canResolveFlags && (
+        <div className="flex items-center justify-between border-t border-red-200/60 pt-1.5 mt-2">
+          <span className="text-[10px] font-semibold text-red-700">Requires Fix</span>
+          <button
+            disabled={submitting}
+            onClick={async () => {
+              const comment = prompt('Enter resolution note:');
+              if (comment !== null) {
+                setSubmitting(true);
+                await onResolveFlag(f.id, 'resolve', comment);
+                setSubmitting(false);
+              }
+            }}
+            className="rounded-lg bg-teal-700 px-2.5 py-1 text-[10px] font-bold text-white shadow-2xs hover:bg-teal-800 transition"
+          >
+            ✓ Mark Resolved
+          </button>
+        </div>
+      )}
+    </div>
+  );
+})}
             </div>
           </div>
         )}

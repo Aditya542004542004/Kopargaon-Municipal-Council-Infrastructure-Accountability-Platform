@@ -240,27 +240,36 @@ router.post('/milestones/:id/reject', requireAuth, requireRole('engineer'), asyn
 });
 
 // Citizen Flag Discrepancy (Now with EXIF Geotag Verification for Citizen Complaints!)
+// Citizen Flag Discrepancy — Requires photo within 100 meters of project site
 router.post('/milestones/:id/flags', requireAuth, requireRole('citizen'), upload.single('photo'), async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
   const photoUrl = photoUrlFor(req.file);
+
   if (!text || !text.trim()) return res.status(422).json({ error: 'text is required' });
 
+  // JOIN project to get exact project latitude and longitude
   const [milestoneRows] = await pool.query(
-    `SELECT m.*, p.latitude, p.longitude FROM milestones m JOIN projects p ON m.project_id = p.id WHERE m.id = ?`,
+    `SELECT m.*, p.latitude, p.longitude 
+     FROM milestones m 
+     JOIN projects p ON m.project_id = p.id 
+     WHERE m.id = ?`,
     [id]
   );
   const milestone = milestoneRows[0];
   if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
 
+  if (milestone.status !== 'verified') {
+    return res.status(409).json({ error: 'Only verified milestones can be flagged' });
+  }
+
+  const projectLat = Number(milestone.latitude || 19.8887);
+  const projectLng = Number(milestone.longitude || 74.4784);
+
   let flagGeo = { geoStatus: 'NO_METADATA', geoDistanceKm: null, photoLat: null, photoLng: null };
 
   if (req.file) {
-    flagGeo = await verifyCitizenFlagImage(
-      req.file.path,
-      Number(milestone.latitude || 19.8887),
-      Number(milestone.longitude || 74.4784)
-    );
+    flagGeo = await verifyCitizenFlagImage(req.file.path, projectLat, projectLng);
   }
 
   const connection = await pool.getConnection();
@@ -271,7 +280,10 @@ router.post('/milestones/:id/flags', requireAuth, requireRole('citizen'), upload
     await connection.query(
       `INSERT INTO flags (id, milestone_id, citizen_id, text, photo_url, status, geo_status, geo_distance_km, exif_lat, exif_lng) 
        VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
-      [flagId, id, req.user.id, text.trim(), photoUrl, flagGeo.geoStatus, flagGeo.geoDistanceKm, flagGeo.photoLat, flagGeo.photoLng]
+      [
+        flagId, id, req.user.id, text.trim(), photoUrl, 
+        flagGeo.geoStatus, flagGeo.geoDistanceKm, flagGeo.photoLat, flagGeo.photoLng
+      ]
     );
 
     await writeAudit(connection, {

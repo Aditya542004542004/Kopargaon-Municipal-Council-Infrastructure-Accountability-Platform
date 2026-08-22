@@ -47,17 +47,18 @@ function normalizeDetail(raw) {
       contentStatus: m.content_status,
       detectedLabels: m.detected_labels,
       autoFlagged: m.auto_flagged,
-      flags: m.flags ? m.flags.map((f) => ({
-        id: f.id,
-        text: f.text,
-        photoUrl: f.photo_url,
-        flaggedAt: f.flagged_at,
-        status: f.status || 'pending',
-        resolutionNote: f.resolution_note,
-        resolvedAt: f.resolved_at,
-        geoStatus: f.geo_status,
-        geoDistanceKm: f.geo_distance_km
-      })) : [],
+      // In src/App.jsx inside normalizeDetail (around line 32):
+flags: m.flags ? m.flags.map((f) => ({
+  id: f.id,
+  text: f.text,
+  photoUrl: f.photo_url || f.photoUrl || null, // 👈 CAPTURES BOTH photo_url AND photoUrl
+  flaggedAt: f.flagged_at || f.flaggedAt,
+  status: f.status || 'pending',
+  resolutionNote: f.resolution_note || f.resolutionNote,
+  resolvedAt: f.resolved_at || f.resolvedAt,
+  geoStatus: f.geo_status || f.geoStatus,
+  geoDistanceKm: f.geo_distance_km ?? f.geoDistanceKm ?? null
+})) : [],
     })),
     trustIndex,
     budget,
@@ -288,8 +289,8 @@ export default function App() {
 
            {/* Inside src/App.jsx for overview tab */}
 {projectTab === 'overview' && (
-  <div ref={printRef} className="space-y-5">
-    {/* 1. UNIFIED 3-COLUMN TOP EXECUTIVE STRIP (Zero Vertical Wastage) */}
+  <div ref={printRef} className="space-y-6">
+    {/* 1. Integrated 3-Column Top Executive Strip */}
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <div className="lg:col-span-5">
         <PassportHeader project={detail.project} />
@@ -307,64 +308,42 @@ export default function App() {
       </div>
     </div>
 
-    {/* 2. 2-COLUMN MILESTONES GRID (Fills Right-Side Empty Whitespace) */}
+    {/* 2. Milestone Timeline (2-Column Masonry Flow) */}
     <div>
       <h2 className="font-display mb-3 text-base font-bold text-slate-900 flex items-center justify-between">
         <span>Milestone Timeline ({detail.milestones.length})</span>
         <span className="text-xs text-slate-400 font-normal">Click any photo for Fullscreen Lightbox</span>
       </h2>
 
-   {/* In src/App.jsx around line 200 */}
-
-<div>
-  <h2 className="font-display mb-3 text-base font-bold text-slate-900 flex items-center justify-between">
-    <span>Milestone Timeline ({detail.milestones.length})</span>
-    <span className="text-xs text-slate-400 font-normal">Click any photo for Fullscreen Lightbox</span>
-  </h2>
-
-  {/* 🧱 MASONRY COLUMN FLOW (Next card slides up into empty space!) */}
-  <div className="columns-1 lg:columns-2 gap-4 space-y-4">
-    {detail.milestones.length === 0 && (
-      <p className="text-xs text-slate-400 py-4 text-center bg-white rounded-xl border">
-        No milestones submitted yet.
-      </p>
-    )}
-    
-    {detail.milestones.map((milestoneItem) => (
-      <div key={milestoneItem.id} className="break-inside-avoid mb-4">
-        <MilestoneCard 
-          milestone={milestoneItem} 
-          role={user.role} 
-          onVerify={handleVerify} 
-          onReject={handleReject} 
-          onFlag={handleFlag} 
-          onResolveFlag={handleResolveFlag} 
-        />
+      <div className="columns-1 lg:columns-2 gap-4 space-y-4">
+        {detail.milestones.length === 0 && (
+          <p className="text-xs text-slate-400 py-4 text-center bg-white rounded-xl border">
+            No milestones submitted yet.
+          </p>
+        )}
+        
+        {detail.milestones.map((milestoneItem) => (
+          <div key={milestoneItem.id} className="break-inside-avoid mb-4">
+            <MilestoneCard 
+              milestone={milestoneItem} 
+              role={user.role} 
+              onVerify={handleVerify} 
+              onReject={handleReject} 
+              onFlag={handleFlag} 
+              onResolveFlag={handleResolveFlag} 
+            />
+          </div>
+        ))}
       </div>
-    ))}
-  </div>
 
-  {/* Contractor Milestone Form */}
-  {user.role === 'contractor' && (
-    <div className="mt-4">
-      {(detail.project.contractorId === user.id || detail.project.contractor_id === user.id) ? (
-        <NewMilestoneForm onSubmit={handleSubmitMilestone} />
-      ) : (
-        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900">
-          🔒 Milestone submission restricted: Assigned to "{detail.project.contractor}".
-        </div>
-      )}
-    </div>
-  )}
-</div>
-
+      {/* 🟢 SINGLE Contractor Milestone Form (Rendered ONCE) */}
       {user.role === 'contractor' && (
-        <div className="mt-4">
+        <div className="mt-6">
           {(detail.project.contractorId === user.id || detail.project.contractor_id === user.id) ? (
             <NewMilestoneForm onSubmit={handleSubmitMilestone} />
           ) : (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900">
-              🔒 Milestone submission restricted: Assigned to "{detail.project.contractor}".
+              🔒 Milestone submission restricted: Assigned to contractor "{detail.project.contractor}".
             </div>
           )}
         </div>
