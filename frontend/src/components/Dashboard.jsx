@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { formatRupees } from '../utils/trustIndex';
 import ProjectMap from '../components/ProjectMap';
+import PerformanceScorecardModal from './PerformanceScorecardModal';
 
 const CATEGORIES = [
   'All Categories',
@@ -28,7 +29,8 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('All Categories'); // 👈 CATEGORY FILTER STATE
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [showScorecard, setShowScorecard] = useState(false); // 👈 CONTRACTOR SCORECARD MODAL STATE
 
   const handleSelect = onSelect || onSelectProject;
 
@@ -51,7 +53,7 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
     }).length;
   }, [projects]);
 
-  // Filtered Projects by Search, Status, and Category!
+  // Filtered Projects
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
       const term = searchQuery.toLowerCase();
@@ -63,12 +65,10 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
       const matchesSearch = name.includes(term) || ward.includes(term) || contractor.includes(term);
       if (!matchesSearch) return false;
 
-      // Category Filter Check
       if (selectedCategory !== 'All Categories' && cat !== selectedCategory.toLowerCase()) {
         return false;
       }
 
-      // Status Filter Check
       if (filterMode === 'high_trust') return (p.trustScore || 0) >= 80;
       if (filterMode === 'at_risk') {
         const spent = Number(p.budgetSpentPercent || 0);
@@ -131,8 +131,8 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
         </div>
       </div>
 
-      {/* 2. DOCKET BAR (Search + Category Filter + Status Filter + Map Switcher) */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+      {/* 2. DOCKET BAR (Search + Category Filter + Scorecard Button + Status Filter + Map Switcher) */}
+      <div className="flex flex-col lg:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
         <div className="flex flex-1 items-center gap-2 w-full">
           {/* Search Bar */}
           <div className="relative flex-1">
@@ -146,7 +146,7 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
             <span className="absolute left-2.5 top-2 text-xs text-slate-400">🔍</span>
           </div>
 
-          {/* NEW CATEGORY FILTER DROPDOWN */}
+          {/* Category Filter Dropdown */}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -158,7 +158,17 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
           </select>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end shrink-0">
+        <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end shrink-0 flex-wrap">
+          {/* 🏆 CONTRACTOR SCORECARD BUTTON */}
+          <button
+            type="button"
+            onClick={() => setShowScorecard(true)}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 transition shadow-2xs shrink-0 flex items-center gap-1"
+          >
+            <span>🏆</span>
+            <span>Performance Directory</span>
+          </button>
+
           {/* Status Filter Pills */}
           <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
             <button
@@ -214,7 +224,7 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
         </div>
       </div>
 
-      {/* 3. CARDS GRID */}
+      {/* 3. CARDS GRID OR MAP */}
       {viewMode === 'map' ? (
         <ProjectMap projects={filteredProjects} onSelectProject={handleSelect} />
       ) : (
@@ -307,10 +317,15 @@ export default function Dashboard({ projects = [], onSelect, onSelectProject }) 
 
           {filteredProjects.length === 0 && (
             <div className="col-span-full bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-              <p className="text-sm font-bold text-slate-800">No projects found for category "{selectedCategory}"</p>
+              <p className="text-sm font-bold text-slate-800">No projects found matching category or search query.</p>
             </div>
           )}
         </div>
+      )}
+
+      {/* CONTRACTOR SCORECARD MODAL */}
+      {showScorecard && (
+        <PerformanceScorecardModal projects={projects} onClose={() => setShowScorecard(false)} />
       )}
     </div>
   );
